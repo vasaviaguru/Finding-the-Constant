@@ -1,0 +1,105 @@
+import java.math.BigInteger;
+
+public class PolynomialSolver {
+    public static void main(String[] args) {
+        // Given values, extracted from your second test case JSON manually:
+        int n = 10;
+        int k = 7;
+
+        // keys = 1 to n, store base and value as string
+        String[][] roots = new String[][] {
+            // index 0 unused, indices 1 to 10 used
+            {},
+            {"6", "13444211440455345511"},
+            {"15", "aed7015a346d635"},
+            {"15", "6aeeb69631c227c"},
+            {"16", "e1b5e05623d881f"},
+            {"8", "316034514573652620673"},
+            {"3", "2122212201122002221120200210011020220200"},
+            {"3", "20120221122211000100210021102001201112121"},
+            {"6", "20220554335330240002224253"},
+            {"12", "45153788322a1255483"},
+            {"7", "1101613130313526312514143"}
+        };
+
+        int[] xValues = new int[k];
+        double[] yValues = new double[k];
+
+        int count = 0;
+        for (int i = 1; i <= n && count < k; i++) {
+            String baseStr = roots[i][0];
+            String valStr = roots[i][1];
+            int base = Integer.parseInt(baseStr);
+
+            BigInteger valDec = new BigInteger(valStr, base);
+
+            xValues[count] = i;
+            yValues[count] = valDec.doubleValue(); // may lose precision for very large numbers
+            count++;
+        }
+
+        double[] coeffs = solveVandermonde(xValues, yValues);
+
+        // Print only the constant term (c = a0)
+        System.out.printf("Constant term (c) = %.4e\n", coeffs[0]);
+    }
+
+    private static double[] solveVandermonde(int[] x, double[] y) {
+        int n = x.length;
+        double[][] A = new double[n][n];
+        double[] b = new double[n];
+
+        for (int i = 0; i < n; i++) {
+            b[i] = y[i];
+            A[i][0] = 1.0;
+            for (int j = 1; j < n; j++) {
+                A[i][j] = A[i][j - 1] * x[i];
+            }
+        }
+
+        return gaussianElimination(A, b);
+    }
+
+    private static double[] gaussianElimination(double[][] A, double[] b) {
+        int n = b.length;
+
+        for (int p = 0; p < n; p++) {
+            int max = p;
+            for (int i = p + 1; i < n; i++) {
+                if (Math.abs(A[i][p]) > Math.abs(A[max][p])) {
+                    max = i;
+                }
+            }
+            double[] temp = A[p];
+            A[p] = A[max];
+            A[max] = temp;
+
+            double t = b[p];
+            b[p] = b[max];
+            b[max] = t;
+
+            if (Math.abs(A[p][p]) <= 1e-12) {
+                throw new RuntimeException("Matrix is singular or nearly singular");
+            }
+
+            for (int i = p + 1; i < n; i++) {
+                double alpha = A[i][p] / A[p][p];
+                b[i] -= alpha * b[p];
+                for (int j = p; j < n; j++) {
+                    A[i][j] -= alpha * A[p][j];
+                }
+            }
+        }
+
+        double[] x = new double[n];
+        for (int i = n - 1; i >= 0; i--) {
+            double sum = 0.0;
+            for (int j = i + 1; j < n; j++) {
+                sum += A[i][j] * x[j];
+            }
+            x[i] = (b[i] - sum) / A[i][i];
+        }
+        return x;
+    }
+}
+
